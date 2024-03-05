@@ -2,3 +2,8 @@
 /data/
 /output/
 .Rproj.user
+.Rdata
+.Rhistory
+*.csv
+*.html
+*.Rproj
