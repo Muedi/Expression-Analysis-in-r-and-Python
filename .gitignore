@@ -5,5 +5,4 @@
 .Rdata
 .Rhistory
 *.csv
-*.html
 *.Rproj
