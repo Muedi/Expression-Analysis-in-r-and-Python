@@ -43,6 +43,8 @@ Note the comment lines, which can be used in R code to tell the interpreter to n
 # and the pipe operator %>% allowing you to chain functions together.
 # it also contains ggplot2, which we'll use for data visualization.
 install.packages("tidyverse")
+install.packages("RColorBrewer")
+
 # BioConductor is a package that allows you to install packages from the
 # project/repository of the same name, see more in chapter 1.3
 if (!require("BiocManager", quietly = TRUE))
@@ -262,12 +264,12 @@ However, in most other applications in R, like statistical functions and also th
 
 ### Exercise 1.3 <br>Transpose and build a metadata table metadata
 
-a. Assign a new variable called *meta.data* that hold the general information about the samples. The meta.data should be a dataframe or matrix, not a tibble and it should have the ID assigned as **row.names()**. 
+a. Assign a new variable called *meta.data* that hold the general information about the samples. The meta.data should be a dataframe, not a tibble and it should have the ID assigned as **row.names()**. 
 b. Assign a new variable called *counts* that hold the numerical information about the samples. It should be Genenames x sample names, the genenames should be assigned as row names. 
 
 Use the **select()** function for both tasks. 
 <br>Tipp: you can *deselect* a column, by using **-** infront of the column name.
-<br>Tipp: Use **as.data.frame()/as.matrix()** and **column_to_rownames()** to accomplish this. 
+<br>Tipp: Use **as.data.frame()** and **column_to_rownames()** to accomplish this. 
 <br>Feel free to use the pipeoperator **%>%** to select the data. 
 
 ```{r,echo=TRUE, results='hide'}
@@ -275,7 +277,8 @@ Use the **select()** function for both tasks.
 meta.data <- combined_data %>% 
   select(ID, class, dataset) %>% 
   column_to_rownames("ID") %>% 
-  as.matrix()
+  as.data.frame()
+  
 meta.data
 
 # make count matrix
@@ -321,953 +324,138 @@ A Principal Component Analysis, short PCA, is a (linear) *dimension reduction* t
 It's been around since 1901 and basically computes linear combinations that represent the variance in the data best. To do that it starts, with the longest axis in the data, by minmizing the distance of each point in the data to the first linear combination it computes: The first principal component (PC). This GIF gives a good intuition whats happening under the hood: <br>
 ![](images/first-pc.gif)
 The process is repeated incrementally, but every following PC must be orthogonal to all its predecessors, to ensure the PCs do not overlap in information about the underlying variance of the data. The image below shows three PCs fitted to an ellipsoid. 
+
 ![](images/3D-pcs.png)
 
-The thread I found these images is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I recommend to check out the thread, it has a number of answers, ranging from very mathematical to much mnore intuitive explanations (as hopefully given above :D)
+The thread I found these images is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I recommend to check out the thread, it has a number of answers, ranging from very mathematical to much more intuitive explanations (as hopefully given above :D)
 <br> Link: https://stats.stackexchange.com/questions/2691/making-sense-of-principal-component-analysis-eigenvectors-eigenvalues
 
 
 ### And a scatterplot? 
-A scatterplot is the most simple plot you can come up with, it plots two numerical variables against each other leading to a point cloud. We'll plot the first two principal components against each other, as we'll see in a minute. 
+A scatterplot is the most simple plot you can come up with, it plots two numerical variables against each other leading to a 2D point cloud. We'll plot the first two principal components against each other, as we'll see in a minute. 
 
 
 ### Exercise 2.1 <br> computing PCA
-load the stats package and use the **prcomp()** function to conmpute the principal components of our expression data.
+a. Load the stats package and use the **prcomp()** function to compute the principal components of our expression data and save it in a variable.
+b. Assign the PCs to a new variable by calling the PCA-object you just saved, now add the metadata to it with the **left_join()** function.
+
+Tipp: as we mentioned PCA is a ML technique and most of the time the respective functions will expect the data to be <span style="color: #336699; font-weight: bold;">features x samples</span>, use **t()** to easily transpose the counts object.<br>
 Tipp: there is also **rownames_to_column()**
-```{r message=FALSE, warning=FALSE, include=FALSE}
-df_pca <- prcomp(counts) 
-df_plot <- df_pca$x %>% as_tibble()
+```{r message=FALSE, warning=FALSE, include=T}
+# compute PCs
+pca_obj <- prcomp(t(counts)) 
+df_plot <- pca_obj$x %>% as_tibble(rownames="ID")
 
+
+# add metadata
+df_plot <- meta.data %>% 
+  rownames_to_column("ID") %>%
+  left_join(df_plot, by = "ID")
 
 ```
 
-### Exercise 2.2 <br> plotting the information together with metadata.
+### Exercise 2.2 <br>plotting the information together with metadata.
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
-# Exercise 3.1 - SOLUTION
-who2 <- read_delim("http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/who2.txt", delim="-")
-who2
-# who2 is not tidy because values are not separated
+Now we'll want to plot the first two principal components as a scatterplot. 
+For this we'll need functiuons from ggplot2, which is part of the tidyverse. 
+
+ggplot2 has its own pipe-operator to chain together functions that manipulate the final plot, which is **+**. . 
+
+To illustrate how ggplot works, we'll plot the density of the first gene in our count Matrix. For this we'll use our original *combined_data* variable, as its format allows us to include metadata without joining. We'll load a library called **scales** that allows us to easily change the color of fill or color of our plots.
+```{r message=FALSE, warning=FALSE, include=T}
+# we'll need this for easy different color scales :)
+library(scales)
+
+# Filter for the gene of interest
+plt <- combined_data %>% 
+  select(ID, class, dataset, ENSG00000000003) %>%
+  ggplot(aes(x = ENSG00000000003, fill = class, color = class)) +
+  geom_density(alpha = 0.5) +
+  labs(title = paste("Distribution of reads for", "ENSG00000000003"),
+       x = "Count",
+       y = "Density",
+       fill = "Sample",
+       color = "Sample") +
+  theme_bw()
+
+# as you saw, plots can also be saved as objects, they can be called to show them or saved with ggsave()
+plt
+```
+Funny that we directly see a clear difference, that was actually not planned! 
+Let's have a look what changes, when we change either fill or color to *dataset* instead of *class*. <br>You can add ```scale_fill_brewer(palette = "Dark2") + 
+scale_color_brewer(palette = "Set1")``` to change the colors of fill and color respectively.
+```{r message=FALSE, warning=FALSE, include=F}
+# we'll need this for easy different color scales :)
+library(scales)
+
+# Filter for the gene of interest
+plt <- combined_data %>% 
+  select(ID, class, dataset, ENSG00000000003) %>%
+  ggplot(aes(x = ENSG00000000003, fill = dataset, color = class)) +
+  geom_density(alpha = 0.5) +
+  labs(title = paste("Distribution of reads for", "ENSG00000000003"),
+       x = "Count",
+       y = "Density",
+       fill = "Sample",
+       color = "Sample") +
+    scale_fill_brewer(palette = "Dark2") +  # for fill color
+  scale_color_brewer(palette = "Set1") +  # for border color
+  theme_bw()
+
+# as you saw, plots can also be saved as objects, they can be called to show them or saved with ggsave()
+plt
 ```
 
+Now use what you saw above with your dataframe containing the PCs and metadata.
+Save the plot with the ggsave function. 
+```{r include=T}
 
-### Exercise 3.3 
+plt <- df_plot %>% 
+  ggplot(aes(x=PC1, y=PC2, color=class, shape=dataset)) +
+      geom_point() 
 
-```{r include=FALSE}
-# Exercise 3.1 - SOLUTION
-who_pop <- read_excel("datasets/who_split.xlsx")
-who_pop
-# not tidy because a variable is spread in columns
+plt
+# ggsave(filename = file.path(out.dir, 'PCA_head-and-neck.png'), plot=plt)
 ```
+What you can see, if you made it work, is a classic *Batch effect*! The main variance in the dataset (first PC) is explained by the difference ebtween the dataset.
+Feel free to experiment a bit and check how the PCA scatter plot looks like for the respective datasets alone!
 
+<div style="border: 1px solid black; padding: 10px; background-color: #f9f9f9;">
+<p style="text-align: center; font-weight: bold;">Batch effects and other artifacts</p>
+Artifacts is a word for underlying factors that effect the data we are working with, but are not associated with the biological observation. By distorting the gene counts or introducing biases of other nature, they will impact the downstream analysis and lead to false results. The most abundant and impactful are the **batch effects**, which stem from technical differences in the experimental phase of an assy: Different Handlers, reagents, machines are just a few sources for them. Sometimes they correlate well with differences in quality of a sample, as we showed in one of the works of the Automated Quality Control box. We'll see how to handle them in later sections.
+</div>
 
-### Why tidy data?
-Why ensure that your data is tidy? There are two main advantages:
-
-1. If you have a consistent data structure, it’s easier to learn the tools that work with it because they have an underlying uniformity. The functions in the tidyverse all work flawlessly with tidy datasets.
-1. Placing variables in columns allows R’s vectorised nature to shine.
-
-The principles of tidy data seem very obvious. Unfortunately, most data that you will encounter will be untidy. There are two main reasons:
-
-1. Most people aren’t familiar with the principles of tidy data.
-1. Data is often organized to facilitate some use other than analysis.
-
-This means that for most real analyzes, you will need to tidy your data.
-
-
-<!-- ###################################################################### -->
-## Spreading and gathering
-<!-- ###################################################################### -->
-When you are in front of a dataset, the first step is always to understand what the observations and the features that describe them are. The second step is to solve one of two common problems:
-
-1. **One observation** is scattered across **multiple rows**
-1. **One feature** is spread across **multiple columns**
-
-To fix these problems, the **tidyverse** provides you with functions **spread** and **gather**.
-
-
-### Spreading
-You use function **spread** for Problem 1: one observation is scattered across multiple rows. That’s exactly the problem we saw in table **who1**:
-
-```{r}
-who1
-```
-
-**who1** is an excerpt of the World Health Organization Tuberculosis Report. Each observation, a country in a year in this case, should be accompanied by that year’s number of tuberculosis cases and population. However, each country-year pair appears twice in who1: one for the tuberculosis cases and one for the country’s population.
-
-To tidy up this dataset, we need to spread column count into new columns, one for each of the keys specified in column type:
-
-![**Figure**: Adapted from “R for Data Science”, Chapter 12](images/spread.png)
-
-We can do this with function **spread** as follows:
-
-```{r}
-who1_tidy <- who1 %>% 
-   spread(value = count, key = type)
-who1_tidy
-```
-
-Note the syntax used to tidy up **who1**:
-
-1. Choose a variable name to store the tidy data (this could very well be **who1** again).
-1. Use the assignment operator **<-**.
-1. Specify the variable that we want to tidy up.
-1. Use the pipe operator **%>%** to channel the content of who1 to the function **spread** (more on the pipe operator later in this Part).
-1. Call function **spread** and specify the column containing the **values** that we want to spread and the column containing the new variable names (known as the **key** column).
-
-
-### Gathering
-You use function **gather** for Problem 2: **one feature** is spread across **multiple columns**. That is exactly the problem we saw in, for example, table *who_cases* from the Excel file *who_split.xlsx*:
-
-```{r}
-who_cases
-```
-
-
-The column names 1999 and 2000 are actually values of the variable year, which means that each row represents two observations instead of one.
-
-To tidy this dataset, we need to gather columns 1999 and 2000 into a new pair of variables:
-
-
-![**Figure**: Adapted from “R for Data Science”, Chapter 12](images/gather.png)
-
-
-We can do this with function **gather** as follows:
-```{r}
-who_cases_tidy <- who_cases %>% 
-   gather(`1999`, `2000`, key = "year", value = "cases")
-who_cases_tidy
-```
-
-
-Note the syntax used to tidy up *who_cases*:
-
-1. Choose a variable name to store the tidy data (this could very well be *who_cases* again).
-1. Use the assignment operator **<-**.
-1. Specify the variable that we want to tidy up.
-1. Use the pipe operator **%>%** to channel the contents of *who_cases* to function **gather**.
-1. Call function **gather** and specify the columns we want to merge, the name of the column that will contain the merged **keys** and the name of the column that will contain the **value** for the number of tuberculosis cases per country.
-
-
-### Exercise 3.4
-Consider the following tibble, which records heights and weights of 3 students:
+### Excersise 3 - Screeplots and percentage of Variance explained.
+Principal components can tell us a lot about the data, the more you need to adequately descripe its variance, the more diverse it is. It is intersting for us to see how much variance is actually covered by the PCs. 
 
 ```{r}
-students <- tibble(name = rep(c("Jonas", "Ines", "Hanna"), each = 2),
-                   type = rep(c("height", "weight"), 3),
-                   measure = c(1.83, 81, 1.75, 71, 1.69, 55))
-students
+# first we'll get the standard deviations, which are stored in our PCA object
+# Create a data frame for the scree plot
+scree_data <- data.frame(
+  PC = paste("PC", 1:length(pca_obj$sdev)),
+  Variance =  pca_obj$sdev^2
+)
+# we'll just take the first 20 
+scree_data <- scree_data[1:20,]
+# now we can create a scree plot which basically plots the PCs in their order
+# and the repective variuance expleined by them. 
+plt <- ggplot(scree_data, aes(x = reorder(PC, Variance, decreasing=T), y = Variance)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Scree Plot",
+       x = "Principal Component",
+       y = "Variance Explained") +
+  theme_bw()
+plt
+
 ```
-
-Use the appropriate **tidyr** function on variable **students** to make it tidy.
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-# Exercise 3.4 - SOLUTION
-# We need to spread type and measure
-students_tidy <- students %>% spread(value = measure, key = type)
-students_tidy
-```
-
-
-### Exercise 3.5
-Consider the following tibble, which records the expression of 4 genes at 3 different time points (d00, d02 and d04):
-
+Additionally we can compute the percentage of variance that each of the PCs explains as follows:
 ```{r}
-genes <- tibble(symbol = c("DMD", "MYOG", "MYF5", "MYOD1"),
-                d00 = c(0.697, 0.844, 1.878, 1.622),
-                d02 = c(1.986, 0.051, 0.887, 1.313),
-                d04 = c(0.157, 0.774, 1.507, 0.628))
-genes
+percentage <- round(df_pca$sdev^2 / sum(df_pca$sdev^2) * 100, 2)
+percentage
 ```
+So the batch effect we observed on the PCA plot quite drastically is actually generating **42%** of the Variance in out data!
 
-Here, an observation should be a gene at a given time point. Use the appropriate tidyr function on variable genes to make it tidy.
+## Heatmaps and clustering
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
-# Exercise 3.5 - SOLUTION
-# We need to gather columns delimited in the table by d00 and d04
-genes_tidy <- genes %>% gather(d00:d04, key="time", value="expression")
-genes_tidy
-```
+## Differential expression
 
-
-<!-- ###################################################################### -->
-## Separating and uniting
-<!-- ###################################################################### -->
-
-### Separating
-When one column in a dataset contains two variables, we’ll need to use function **separate** to fix the issue. That’s exactly the problem we saw in table *who2*:
-
-```{r}
-who2
-```
-
-Column rate contains both cases and population, so we need to split it in two:
-
-![**Figure**: Adapted from “R for Data Science”, Chapter12](images/separate.png)
-
-We can do this with function **separate** as follows:
-
-```{r}
-who2_tidy <- who2 %>% 
-   separate(rate, into = c("cases", "population"), sep = "/")
-who2_tidy
-```
-
-Note the syntax used to tidy up **who2**:
-
-1. Choose a variable name to store the tidy data (this could very well be **who2** again).
-1. Use the assignment operator **<-**.
-1. Specify the variable that we want to tidy up.
-1. Use the pipe operator **%>%** to channel the contents of **who2** to function **separate**.
-1. Call function **separate** and specify the column we want to split, the name of the new columns and the separator that is currently merging the variables.
-
-
-### Uniting
-When a variable is stored in two separate columns and is more convenient to combine them, we need to use function **unite*. Table *who3* has this problem:
-
-```{r message=FALSE, warning=FALSE}
-who3 <- read_tsv("http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/who3.tsv")
-who3
-```
-
-
-Column **century** and **year** can be combined into a single column called **year**:
-
-![**Figure**: Adapted from “R for Data Science”, Chapter12](images/unite.png)
-
-We can do this with function **unite** as follows:
-
-```{r}
-who3_tidy <- who3 %>% 
-   unite(century, year, col = "year", sep = "")
-who3_tidy
-```
-
-Note the syntax used to tidy up who3:
-
-1. Choose a variable name to store the tidy data (this could very well be **who3** again).
-1. Use the assignment operator **<-**.
-1. Specify the variable that we want to tidy up.
-1. Use the pipe operator **%>%** to channel the contents of **who3** to function **unite**.
-1. Call function **unite** and specify the columns we want to merge, the name of the new column and the separator that we want to use to merge the column values.
-
-
-### Exercise 3.6
-Consider the following tibble, which records heights and weights of 3 students:
-
-```{r}
-students <- tibble(name = c("Jonas", "Ines", "Hanna"),
-                   ratio = c("81/1.83", "71/1.75", "55/1.69"))
-students
-```
-
-Use the appropriate **tidyr** function on variable **students** to make it tidy.
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-# Exercise 3.6 - SOLUTION
-# We need to separate ratio
-students_tidy <- students %>% 
-  separate(ratio, into=c("height", "weight"), sep = "/")
-students_tidy
-```
-
-
-### Exercise 3.7
-Consider the following tibble, which records the price of 4 drugs:
-
-```{r}
-drugs <- tibble(name = c("penicillin", "insuline", "aspirin", "lanoxin"),
-                euros = c(13, 17, 5, 25),
-                cents = c(81, 20, 14, 12))
-drugs
-```
-
-Use the appropriate **tidyr** function on variable drugs to make it tidy.
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-# Exercise 3.7 - SOLUTION
-# We need to unite euros and cents
-drugs2<-drugs %>% unite(euros, cents, col = "price", sep= ".")
-drugs2
-```
-
-
-<!-- ###################################################################### -->
-## The %>% operator
-<!-- ###################################################################### -->
-
-As you know already, we channel the contents of a **tibble** to the different **tidyr** functions using the pipe operator: **%>%**.
-
-Pipes are a powerful tool for clearly expressing the operation we want to perform on a variable. In addition, they can be used to apply a sequence of operations to a variable.
-
-Table *who3*, for example, has two problems: **cases** and **population** are expressed as a **rate** and **year** is split in columns **century** and **year**:
-
-```{r}
-who3
-```
-
-So, we clearly need two steps to tidy up this dataset:
-
-```{r}
-who3_tidy <- who3 %>% 
-   separate(rate, into = c("cases", "population"), sep = "/")
-
-who3_tidy <- who3_tidy %>% 
-   unite(century, year, col = "yyyy", sep = "")
-
-who3_tidy
-```
-
-Thanks to the pipe, we can apply these two operations to *who3* in one go:
-
-```{r}
-who3_tidy <- who3 %>% 
-  separate(rate, into = c("cases", "population"), sep = "/") %>% 
-  unite(century, year, col = "yyyy", sep = "")
-who3_tidy
-```
-
-Note that this process reads almost like natural language:
-
-1. We channel (or pipe) the content of *who3* to function **separate**.
-1. **separate** splits column rate into columns *cases* and *population* using “/” as separator.
-1. The result of **separate** is piped to function **unite**.
-1. **unite** combines columns *century* and *year* into column **yyyy** using nothing (empty string "") as separator.
-
-Even though writing the above code on a single line of code is still valid, it is good practice to use **ENTER** (i.e. a new line) after every **%>%** for clarity.
-
-
-<!-- ###################################################################### -->
-<!-- ###################################################################### -->
-# Data transformation
-<!-- ###################################################################### -->
-<!-- ###################################################################### -->
-
-
-<!-- ###################################################################### -->
-## Foreword
-<!-- ###################################################################### -->
-Once you have tidied your dataset of interest, you will often need to create some new variables or summaries, or to reorder the observations to make the data easier to work with.
-
-This part will show you how to use the functions from package **dplyr** to transform your data and understand it better.
-
-
-Throughout this part, you are going to use a tidied up excerpt from the World Health Organization Global Tuberculosis Report. We have been working with this dataset, so you should be familiar with it:
-
-```{r message=FALSE, warning=FALSE}
-who_ref <- read_tsv("http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/who_ref.tsv")
-who_ref
-```
-
-The tibble reports the number of tuberculosis cases in 1999 and 2000 for three different countries, as well as their population.
-
-
-<!-- ###################################################################### -->
-## Sorting by column(s)
-<!-- ###################################################################### -->
-To sort observations by one or more columns, **dplyr** offers function **arrange**. This function takes a tibble and a column name to order by:
-
-```{r}
-who_ref %>% 
-  arrange(year)
-```
-
-If you provide more columns, **arrange** will first sort by the first one, then the second one and so on. This process breaks ties in the values of the preceding columns:
-
-```{r}
-who_ref %>% 
-  arrange(year, cases, population)
-```
-
-To sort in descending order, you have to use **desc**:
-
-```{r}
-who_ref %>% 
-  arrange(desc(country), cases)
-```
-
-
-<!-- ###################################################################### -->
-## Selecting columns
-<!-- ###################################################################### -->
-Function **select** allows you to focus on variables you are really interested in by removing unwanted columns:
-
-```{r}
-who_ref %>% 
-  select(country, cases)
-```
-
-You can also use the **:** operator to select a group of columns:
-
-```{r}
-who_ref %>% 
-  select(year:population)
-```
-
-If you put a minus sign before columns in **select**, it means that you want to discard such variables:
-
-```{r}
-who_ref %>% 
-  select(-population)
-```
-
-This, in combination with the **:** operator is specially useful when your dataset has hundreds or even thousands of columns and you want to focus only on a few:
-
-```{r}
-who_ref %>% 
-  select(-(year:population))
-```
-
-
-<!-- ###################################################################### -->
-## Renaming columns
-<!-- ###################################################################### -->
-If a column in your tibble has a strange or non-informative name, you can use function **rename** to solve this issue:
-
-```{r}
-who_ref %>% 
-  rename(tuberculosis_cases = cases)
-```
-
-
-<!-- ###################################################################### -->
-## Filtering rows
-<!-- ###################################################################### -->
-Function **filter** is one of the most useful tools in package **dplyr** as it allows you to subset observations based on their values. **filter** takes the contents of a tibble and its arguments are logical expressions to filter it.
-
-For example, we can focus on tuberculosis cases in Brazil as follows:
-
-```{r}
-who_ref %>% 
-  filter(country == "Brazil")
-```
-
-To retrieve Chinese cases that occurred after 1999, we do:
-
-```{r}
-who_ref %>% 
-  filter(country == "China" & year > 1999)
-```
-
-To subset observations from Brazil or China:
-
-```{r}
-who_ref %>% 
-  filter(country == "Brazil" | country == "China")
-```
-
-Note that we use the comparison operators >, <, >=, <=, ==, != (not equal) to specify the column value or range of values we want to focus on. In addition, we use the logical operators & (and) and | (or) to combine multiple conditions passed on to **filter**.
-
-You can negate conditions with the **!** operator:
-
-```{r}
-who_ref %>% 
-  filter(!(country == "Brazil"))
-```
-
-Basically, any operation that generates a logical vector can be used within **filter** to subset your tibble.
-
-
-<!-- ###################################################################### -->
-## Adding new variables
-<!-- ###################################################################### -->
-Besides selecting existing columns, it is often useful to create new ones that are functions of existing variables. **dplyr** offers function **mutate** to add new columns at the end of your dataset.
-
-For example, it might be tempting to say that Afghanistan has better programmes against tuberculosis than Brazil and China. However, Afghanistan’s population is smaller. Let’s look at the number of cases per 10 thousand individuals to get a better picture:
-
-```{r}
-who_ref %>% 
-  mutate(cases_per_10k = cases/(population/10000))
-```
-
-**mutate** can be used to create one or more variables at once:
-
-```{r}
-who_ref %>% 
-  mutate(cases_per_10k = cases/(population/10000), thousand_cases = cases/1000)
-```
-
-
-<!-- ###################################################################### -->
-## Grouped operations
-<!-- ###################################################################### -->
-It is often the case that some records in your dataset belong to certain groups. For example, we can group data in **who_ref** by country or by year:
-
-```{r}
-who_ref %>% 
-  group_by(country)
-```
-
-```{r}
-who_ref %>% 
-  group_by(year)
-```
-
-Note that grouping by country results in 3 groups, whereas grouping by year results in 2.
-
-It is also possible to group by multiple variables:
-
-```{r}
-who_ref %>% 
-  group_by(country, year)
-```
-
-The result is 6 groups. This is not very useful in this particular example, because each observation belongs to its own group.
-
-### Grouped summaries
-If we pipe the result of a **group_by** operation to the function **summarise**, the unit of analysis changes from the complete tibble to each individual group. This is very useful, because we can compute useful statistics and summaries on a per group basis.
-
-The following example computes the total number of tuberculosis cases per year:
-
-```{r}
-who_ref %>% 
-  group_by(year) %>% 
-  summarise(total_cases = sum(cases))
-```
-
-The following example computes the average number of cases per country and the corresponding standard deviation:
-
-```{r}
-who_ref %>% 
-  group_by(country) %>% 
-  summarise(avg_cases = mean(cases), st_dev = sd(cases))
-```
-
-Note how **summarise** collapses each group to a single row and drops columns not involved in the grouping process. In fact, if we use **summarise** without grouping first, it sees the entire tibble as a single group and the result is a single row:
-
-```{r}
-who_ref %>% 
-  summarise(total_cases = sum(cases))
-```
-
-The above means that grouped summaries should be generated with functions that collapse their argument into a single value. Some useful summary functions are **sum, mean, median, sd, min, max and n**.
-
-### Grouped mutates
-If we pipe the result of a **group_by** operation to the function **mutate**, we can create new variables on a per group basis.
-
-Say, for example, that we want to compute the fraction of tuberculosis cases in a year from the total occurred in a country over all the years:
-
-```{r}
-who_ref %>% 
-  group_by(country) %>% 
-  mutate(fraction = cases/sum(cases))
-```
-
-Note that grouped mutates do not collapse the input tibble. They maintain the original number of samples and columns. As a result, functions used to create new variables in **mutate** should produce the same number of members within the group.
-
-### Grouped filters
-If we pipe the result of a **group_by** operation to the function **filter**, we can remove observations (i.e. rows) on a per group basis.
-
-For example, to find the year with the minimum number of tuberculosis cases in a country, we can do:
-
-```{r}
-who_ref %>% 
-  group_by(country) %>% 
-  filter(cases == min(cases))
-```
-
-As shown below, using **summarise** doesn’t work in this case because we lose the information about the year:
-
-```{r}
-who_ref %>%
-  group_by(country) %>% 
-  summarise(min_cases = min(cases))
-```
-
-
-<!-- ###################################################################### -->
-## Case study
-<!-- ###################################################################### -->
-### Exercise 4.1
-
-In this case study, you’re going to work with a dataset giving the monthly deaths from lung diseases in the UK between 1974 and 1979.
-
-1. Import file `http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/uk_lung_deaths.csv` into variable **uk**.
-1. Tidy up the dataset. The goal is to have a tibble with three columns: year, month and deaths.
-1. Use **select** to re-accommodate the columns, such that they appear in the following order: month, year and deaths.
-1. Data from 1974 is too old to be reliable, filter it out.
-1. Use the **%>%** to perform points 1-4 in a single go and assign the result to variable uk.
-1. Report the average number of deaths per month. Sort the result decreasingly by average deaths.
-1. Report the average and total number of deaths per year. Sort the result by year.
-1. For each month of a given year, calculate the percentage of deaths that the month represents in comparison to the total number of deaths in the given year. 
-1. For each year, report the month with the maximum number of deaths. Sort the result by year.
-1. Speculate about possible reasons why the months resulting from point 9 have the most deaths from lung diseases.
-
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-# Case Study - SOLUTION
-
-# Step 1-5:
-uk <- read_csv("http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/uk_lung_deaths.csv") %>%  # Step 1
-  gather(Jan:Dec, key = month, value = death) %>%  # Step 2
-  select(month, year, death) %>%                   # Step 3
-  filter(year > 1974)                              # Step 4
-uk
-
-# Step 6:
-uk %>% 
-  group_by(month) %>% 
-  summarise(avg_deaths = mean(death)) %>% 
-  arrange(desc(avg_deaths))
-
-# Step 7:
-uk %>% 
-  group_by(year) %>% 
-  summarise(avg_deaths=mean(death), total_deaths=sum(death)) %>% 
-  arrange(year)
-
-# Step 8:
-uk %>% 
-  group_by(year) %>% 
-  mutate(perc_per_month = death / sum(death) * 100)
-
-# Step 9:
-uk %>% 
-  group_by(year) %>% 
-  filter(death == max(death)) %>% 
-  arrange(year)
-
-# Step 10:
-# lung diseases occur more often in winter months
-
-```
-
-
-
-<!-- ###################################################################### -->
-<!-- ###################################################################### -->
-# visualization and modeling
-<!-- ###################################################################### -->
-<!-- ###################################################################### -->
-
-
-<!-- ###################################################################### -->
-## Case study
-<!-- ###################################################################### -->
-The best way to show you the power of visualization for knowledge generation is by means of an example. In this part, you will use a dataset comprised of subjects who were part of a study aimed at understanding the prevalence of diabetes in central Virginia, USA. The variables describing the subjects are:
-
-* **id**: A numeric ID for each subject.
-* **ratio_ch**: Cholesterol/High Density Lipoprotein ratio.
-* **stab.glu**: Stabilised glucose.
-* **glyhb**: Glycosolated haemoglobin.
-* **location**: County of origin.
-* **age**: Age of the subject.
-* **gender**: Gender of the subject.
-* **ratio_wh**: Waist/Hip ratio.
-* **body_measure**: Which body measurement was recorded.
-* **measure**: Height or weight of the subject.
-
-After tidying and transforming the “Diabetes Dataset”, you will visualize relationships between variables and feature distributions with functions from package ggvis in order to propose a simple model for susceptibility to diabetes.
-
-![](images/d_vis.png)
-
-You must load packages tidyverse and ggvis.
-
-### Exercise 5.1
-1. Import file `http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/diabetes.tsv` into variable diab.
-1. Tidy up the imported tibble by piping a series of tidyr operations and assign the result to variable **diab**.
-1. Get rid of column **id**.
-1. Use **mutate** and **as.numeric** to transform character columns that should be numeric.
-1. Height, waist and hip measurements are given in inches, convert them to centimetres (1 inch = 2.54 cm).
-1. Weights are given in pounds, convert them to kilograms (1 pound = 0.454 kg).
-1. Glycosolated haemoglobin levels above 7.0 are usually taken as a positive diagnosis of diabetes. Create a new column called **diagnosis** that takes the value “diabetic” when a subject’s level is greater than 7.0 and “healthy” otherwise (HINT: use function **ifelse**).
-
-Result should look like the following table: 
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Chapter 5 - Case study
-# Exercise 5.1 - SOLUTION
-diab <- read_tsv("http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/diabetes.tsv") %>% 
-  spread(key = body_measure, value = measure) %>% 
-  separate(ratio_ch, into = c("chol", "hdl"), sep = "/") %>% 
-  separate(ratio_wh, into = c("waist", "hip"), sep = "/") %>% 
-  mutate( chol  = as.numeric(chol),
-          hdl   = as.numeric(hdl),
-          waist = as.numeric(waist),
-          hip   = as.numeric(hip),
-          waist  = waist  * 2.54,
-          hip    = hip    * 2.54,
-          height = height * 2.54,
-          weight = weight * 0.454,
-          diagnosis = ifelse(glyhb>7, "diabetic", "healthy") 
-        )
-diab
-```
-
-
-<!-- ###################################################################### -->
-## Plotting with ggplot
-<!-- ###################################################################### -->
-In order to plot with package **ggplot**, we need the **%>%** operator to channel information into function **ggplot**. This creates a blank canvas on top of which we add layers of information and polish our plot. Note that, The **ggplot** functions are chained by the **+** operator!
-
-
-```{r}
-diab %>%
-  ggplot(aes(x = age, y = chol)) +
-  geom_point() +
-  xlab("Subject's age") +
-  ylab("Cholesterol Level")
-```
-
-
-The above example feeds function **ggplot** with the **diab** table, indicates that we want to compare age with cholesterol levels (**aes** stands for aesthetic), uses **geom_points** to generate a scatter plot with the data and polishes the plot by providing custom axis labels (**xlab** and **ylab**).
-
-You will see that following this syntax allows you to generate many different types of plots. It is just a matter of changing the layer function or adding more layers to your plot:
-
-```{r}
-diab %>%
-  ggplot(aes(x = age, y = chol )) +
-  geom_point(shape=23, color='red') +
-  geom_smooth() +
-  xlab("Subject's age") +
-  ylab("Cholesterol Level")
-```
-
-
-See how the above example adds a **geom_smooth** layer on top of **geom_point**. Also, note that it is possible to further polish the plot via parameters that are specific to each type of layer. For example, we can change the color and shape of points through parameters color and shape of function **geom_point**.
-
-
-<!-- ###################################################################### -->
-## Bar plots
-<!-- ###################################################################### -->
-Bar plots are useful when we want to graphically show counts of a discrete or categorical variable. For example, to see the number of male and female subjects in **diab** we do:
-
-```{r}
-diab %>%
-  ggplot(aes(x=gender)) +
-  geom_bar(width = 0.5) +
-  xlab("Gender") +
-  ylab("Number of subjects")
-```
-
-
-Note how the **width** parameter of **geom_bar** has been used to plot narrow bars.
-
-We can also see the number of diabetic and healthy subjects:
-
-```{r}
-diab %>%
-  ggplot(aes(x=diagnosis)) +
-  geom_bar(width = 0.5) +
-  xlab("Diagnosis") +
-  ylab("Number of subjects")
-```
-
-Finally, we can also use the y-axis of bar plots to show information other than counts. For example, we can contrast the average cholesterol levels of men and women:
-
-```{r}
-diab %>% 
-  group_by(gender) %>% 
-  summarise(avg_chol = mean(chol)) %>% 
-  ggplot(aes(x = gender, y = avg_chol)) + 
-  geom_col(width = 0.5) +
-  xlab("Gender") +
-  ylab("Avg. cholesterol")
-```
-
-Note how data transformations can be applied on the fly and piped to **ggplot**.
-
-
-<!-- ###################################################################### -->
-## Scatter plots and regressions
-<!-- ###################################################################### -->
-Scatter plots allow us to study the relationships between two numerical variables and regressions try to find the curve that best describes how x is related to y.
-
-Let’s see how weight and waist measurements are related:
-
-```{r}
-diab %>% 
-  ggplot(aes(x = weight, y = waist)) + 
-  geom_point() + 
-  geom_smooth() + 
-  xlab("Subject's weight") + 
-  ylab("Waist measurement")
-```
-
-
-In the above example, **geom_point** is in charge of the scatter plot and **geom_smooth** finds a curve that follows the points and summarizes the observed trend. By default, a standard error grey band is shown to indicate how much we can trust the blue regression curve.
-
-If we want to have more control over the type of curve that is fitted to the points, we can use the **method** parameter. For example, to fit a straight line to the above plot, we have to use a linear regression model (**“lm”**):
-
-```{r}
-diab %>% 
-  ggplot(aes(x = weight, y = waist)) + 
-  geom_point() + 
-  geom_smooth(method = "lm") + 
-  xlab("Subject's weight") + 
-  ylab("Waist measurement")
-```
-
-
-Even though a scatter plot is intrinsically in 2 dimensions, we can add more layers of information to learn more about our data. For example, we can color our points according to the subject’s diagnosis and adjust their size by glyhb:
-
-```{r}
-diab %>% 
-  ggplot(aes(x = weight, y = waist, color = diagnosis, size = glyhb)) + 
-  geom_point() + 
-  xlab("Subject's weight") + 
-  ylab("Waist measurement")
-```
-
-
-<!-- ###################################################################### -->
-## Line graphs
-<!-- ###################################################################### -->
-Line plots are similar to scatter plots, but the variable in the x-axis is sorted and points are connected in order with a line:
-
-```{r}
-diab %>% 
-  ggplot(aes(x = waist, y = hip)) +
-  geom_line() +
-  xlab("Subject's weight") + 
-  ylab("Waist measurement")
-```
-
-It is very common to add a point layer on top of line plots:
-
-```{r}
-diab %>% 
-  ggplot(aes(x = waist, y = hip)) +
-  geom_line() +
-  geom_point() +
-  xlab("Subject's weight") + 
-  ylab("Waist measurement")
-```
-
-
-<!-- ###################################################################### -->
-## Box plots
-<!-- ###################################################################### -->
-Box plots are very powerful statistical tools that summarize the most important aspects of a variable’s distribution:
-
-![](images/boxplot.png)
-
-
-The x-axis in a box plot is usually a categorical variable and the y-axis is normally a numeric variable who’s distribution we want to explore. For example, let’s visualize the distribution of High Density Lipoprotein values for males and females in **diab**:
-
-```{r}
-diab %>% 
-  ggplot(aes(x = gender, y = hdl)) +
-  geom_boxplot() +
-  xlab("gender") + 
-  ylab("HDL level ")
-```
-
-
-<!-- ###################################################################### -->
-## Histograms and densities
-<!-- ###################################################################### -->
-Histograms work on a single variable and show how it is distributed by dividing its range into a certain number of bins. Thus, the x-axis reports the values that the variable can take (binned) and the y-axis reports the number or fraction of observations that take such values.
-
-Let’s look at the distribution of Stabilized glucose values, specifying the width of the histogram bins with parameter **binwidth**:
-
-```{r}
-diab %>%
-  ggplot(aes(x = stab.glu)) +
-  geom_histogram(binwidth = 15) +
-  xlab("Stabilised glucose") + 
-  ylab("Counts")
-```
-
-We can also put two histograms in the same plot:
-
-```{r}
-diab %>% 
-  group_by(diagnosis) %>% 
-  ggplot(aes(x = stab.glu, fill = diagnosis)) +
-  geom_histogram(binwidth = 15) +
-  xlab("Stabilised glucose") + 
-  ylab("Counts")
-```
-
-Density plots are like regressions but for histograms. Density plots try to find the curve that best summarizes the distribution of a variable and report probability densities instead of counts. To control the smoothing of the density plot, we use parameter **adjust**:
-
-```{r}
-diab %>% 
-  ggplot(aes(x = stab.glu)) + 
-  geom_density(adjust = 0.7, fill = 'grey') + 
-  xlab("Stabilised glucose") + 
-  ylab("Density")
-```
-
-
-<!-- ###################################################################### -->
-## Facets
-<!-- ###################################################################### -->
-
-Ggplot's facets are a powerful feature that subdivides a plot in subplots 
-according to given variables (categories). There are 2 main functions to create 
-the subplots: **facet_wrap** and **facet_grid**.
-
-For example, the density plot can be subdivided by gender (it also works for 
-other types of plots):
-```{r}
-diab %>% 
-  ggplot(aes(x = stab.glu)) + 
-  geom_density(adjust = 0.7, fill='grey') + 
-  facet_wrap(vars(gender)) +
-  xlab("Stabilised glucose") + 
-  ylab("Density")
-```
-
-You can provide a list of columns to the facets function such as gender and location:
-```{r}
-diab %>% 
-  ggplot(aes(x = stab.glu)) + 
-  geom_density(adjust = 0.7, fill='grey') + 
-  facet_wrap(vars(gender, location)) +
-  xlab("Stabilised glucose") + 
-  ylab("Density")
-```
-
-You can combine facets with the **fill** parameter of **aes** (not using anymore 
-**fill** in **geom_density**) to create subplots by gender and location, and to 
-compare the diagnosis in each subplot:
-```{r}
-diab %>% 
-  ggplot(aes(x = stab.glu, fill=diagnosis)) + 
-  geom_density(adjust = 0.7) + 
-  facet_wrap(vars(gender, location)) +
-  xlab("Stabilised glucose") + 
-  ylab("Density")
-```
-
-Finally, facets can be displayed as a grid using facet_grid. Using the example
-below, one can compare the distributions of male and female HDL levels in 
-relation to the diagnosis and location:
-```{r}
-diab %>% 
-  ggplot(aes(x = gender, y = hdl, fill=gender)) +
-  geom_boxplot() +
-  facet_grid(rows=vars(location), cols=vars(diagnosis)) +
-  xlab("gender") + 
-  ylab("HDL level ")
-```
-
-
-<!-- ###################################################################### -->
-## A simple model
-<!-- ###################################################################### -->
-In Exercise 5.1, you used Glycosolated haemoglobin levels above 7.0 to diagnose diabetes. The histograms from the previous section showed that diabetics have bigger levels of Stabilized glucose compared to healthy subjects.
-
-### Exercise 5.2
-
-1. Generate a scatter plot comparing **glyhb** with **stab.glu** using the subject diagnosis as the point color.
-1. Use facets to create subplots to observe the data by location and gender. 
-1. Do you observe differences between the subpopulations of patients? 
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-# Exercise 5.2 - SOLUTION
-diab %>%
-  ggplot(aes(x = glyhb, y = stab.glu, color = diagnosis)) +
-  geom_point() +
-  xlab("glycosolated haemoglobin") +
-  ylab("stabilised glucose")
-
-diab %>%
-  ggplot(aes(x = glyhb, y = weight, color = diagnosis)) +
-  geom_point() +
-  facet_wrap(vars(gender, location)) +
-  xlab("glycosolated haemoglobin") +
-  ylab("stabilised glucose")
-```
