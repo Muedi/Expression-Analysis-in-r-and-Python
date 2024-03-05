@@ -30,7 +30,8 @@ output:
 
 ### R and RStudio
 <div style="text-align: justify;">
-Make sure that **R** and **RStudio** are installed in your computer. You can create a new **R Script** in **RStudio** to copy example source code from this tutorial and write code for the exercises. Save the script in your home directory (or a sub directory of your choice). To run the code written on the current line (or of selected lines), click on button **Run** or press **CTRL+ENTER**. Results will be displayed either in the **RStudio**'s console or the Viewer panel (graphics). To read the documentation about a function (Help panel), in the script, place the cursor on the function's name and press F1. 
+Make sure that **R** and **RStudio** are installed in your computer. You can create a new **R Script** in **RStudio** to copy example source code from this tutorial and write code for the exercises. Save the script in your home directory (or a sub directory of your choice). To run the code written on the current line (or of selected lines), click on button **Run** or press **CTRL+ENTER**. Results will be displayed either in the **RStudio**'s console or the Viewer panel (graphics). To read the documentation about a function (Help panel), in the script, place the cursor on the function's name and press F1. You should use this feature extensively here, as many answers to possible questions are hidden here :)
+
 
 ### package installation
 The packages we'll need can be installed with the following code: <br>
@@ -322,37 +323,25 @@ It's been around since 1901 and basically computes linear combinations that repr
 The process is repeated incrementally, but every following PC must be orthogonal to all its predecessors, to ensure the PCs do not overlap in information about the underlying variance of the data. The image below shows three PCs fitted to an ellipsoid. 
 ![](images/3D-pcs.png)
 
-The thread I found these images is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I reciommend to check out the thread, it has a number of answers, rwanging from very mathematical to much mnore intuitive explanations (as hopefully given above :D)
+The thread I found these images is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I recommend to check out the thread, it has a number of answers, ranging from very mathematical to much mnore intuitive explanations (as hopefully given above :D)
 <br> Link: https://stats.stackexchange.com/questions/2691/making-sense-of-principal-component-analysis-eigenvectors-eigenvalues
 
 
-
 ### And a scatterplot? 
-A scatterplot is the most simple plot you can come up with, it plots two numerical variables against each other leading to a point cloud. We'll plot the fiirst two principal components against each other. 
+A scatterplot is the most simple plot you can come up with, it plots two numerical variables against each other leading to a point cloud. We'll plot the first two principal components against each other, as we'll see in a minute. 
 
 
-<!-- ###################################################################### -->
-There are three simple and interrelated rules that make a dataset tidy:
-
-1. Each **observation/sample** must be reported in its own **row**
-1. Each **variable/feature** describing the sample must have its own **column**
-1. Each **value** must have its own **cell**
-
-We will import some tables and check if they fulfill the above rules.
-
-### Exercise 3.1
-Import file `http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/who1.csv` into variable **who1** and show the imported data. Is the who1 dataset tidy?
-
+### Exercise 2.1 <br> computing PCA
+load the stats package and use the **prcomp()** function to conmpute the principal components of our expression data.
+Tipp: there is also **rownames_to_column()**
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-# Exercise 3.1 - SOLUTION
-who1 <- read_csv("http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/who1.csv")
-who1
-# who1 is not tidy because variables are gathered
+df_pca <- prcomp(counts) 
+df_plot <- df_pca$x %>% as_tibble()
+
+
 ```
 
-
-### Exercise 3.2
-Import file `http://cbdm-01.zdv.uni-mainz.de/~jfontain/files/r_tuto_ggplot/who2.txt` into variable **who2** and show the imported data. Is the **who2** dataset tidy?
+### Exercise 2.2 <br> plotting the information together with metadata.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 # Exercise 3.1 - SOLUTION
@@ -362,8 +351,7 @@ who2
 ```
 
 
-### Exercise 3.3
-Import sheet population from file **datasets/who_split.xlsx** into variable **who_pop** and show the imported data. Is **who_pop** tidy?
+### Exercise 3.3 
 
 ```{r include=FALSE}
 # Exercise 3.1 - SOLUTION
