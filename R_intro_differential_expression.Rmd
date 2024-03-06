@@ -210,7 +210,7 @@ setwd(file.path(getwd(), "Some", "downstream", "path"))
 ```
 <br> 
 
-### Excersise 1. 
+### Excersise 1.1 - Set up your environment
 To set up your working dir, you can either work in your respective OS and create a folder called "Bioinfo-module" and set this as the wording dir with the *setwd()* function. 
 ```{r}
 path_dir <- "C:/Some/random/path/bioinfo-module"
@@ -272,11 +272,11 @@ combined_data <- bind_rows(data_list)
 ```
 
 
-### Exercise 1.2 <br>Inspect your data
+### Exercise 1.2 - Inspect your data
 Now that we have our data at hand, we'll need to observe it. 
-Use the **head()**, **str()** and **dim()** functions to get an overview of the data. 
+Use the **head()**, **str()**, **summary()** and **dim()** functions to get an overview of the data. 
 Does anything strike you as unexpected?
-try to also inspect other objects with the **str()** and **summary** function: What kind of object are the paths to you in- and output-folders? What classes of other objects have we assigned toi variables until now? 
+Try to also inspect other objects with the **str()** and **summary()** function: What kind of object are the paths to you in- and output-folders? What classes of other objects have we assigned toi variables until now? 
 ```{r}
 # str(combined_data)
 
@@ -292,7 +292,7 @@ However, in most other applications in R, like statistical functions and also th
 <span style="color: #336699; font-weight: bold;">features x samples</span>
 
 
-### Exercise 1.3 <br>Transpose and build a metadata table metadata
+### Exercise 1.3 - Transpose and build a metadata table metadata
 
 a. Assign a new variable called *meta.data* that hold the general information about the samples. The meta.data should be a dataframe, not a tibble and it should have the ID assigned as **row.names()**. 
 b. Assign a new variable called *counts* that hold the numerical information about the samples. It should be Genenames x sample names, the genenames should be assigned as row names. 
@@ -371,7 +371,7 @@ The process is repeated incrementally, but every following PC must be orthogonal
 A scatterplot is the most simple plot you can come up with, it plots two numerical variables against each other leading to a 2D point cloud. We'll plot the first two principal components against each other, as we'll see in a minute. 
 
 
-### Exercise 2.1 <br> computing PCA
+### Exercise 2.1 - computing Principal Components and use them for Exploratory Analysis 
 a. Load the stats package and use the **prcomp()** function to compute the principal components of our expression data and save it in a variable.
 b. Assign the PCs to a new variable by calling the PCA-object you just saved, now add the metadata to it with the **left_join()** function.
 
@@ -390,7 +390,7 @@ df_plot <- meta.data %>%
 
 ```
 
-### Exercise 2.2 <br>plotting the information together with metadata.
+### Exercise 2.2 - Plotting the information together with metadata.
 
 Now we'll want to plot the first two principal components as a scatterplot. 
 For this we'll need functiuons from ggplot2, which is part of the tidyverse. 
@@ -476,7 +476,7 @@ Feel free to experiment a bit and check how the PCA scatter plot looks like for 
 Artifacts is a word for underlying factors that effect the data we are working with, but are not associated with the biological observation. By distorting the gene counts or introducing biases of other nature, they will impact the downstream analysis and lead to false results. The most abundant and impactful are the **batch effects**, which stem from technical differences in the experimental phase of an assy: Different Handlers, reagents, machines are just a few sources for them. Sometimes they correlate well with differences in quality of a sample, as we showed in one of the works of the Automated Quality Control box. We'll see how to handle them in later sections.
 </div>
 
-### Excersise 3 - Screeplots and percentage of Variance explained.
+### Excersise 2.3 - Screeplots and percentage of Variance explained.
 Principal components can tell us a lot about the data, the more you need to adequately descripe its variance, the more diverse it is. It is intersting for us to see how much variance is actually covered by the PCs. First we'll get the standard deviations, which are stored in our PCA object inspect the object to see in which part of it they could be stored. Don't forget that we'll need to square the standard deviation to get the variance!
 
 ```{r}
@@ -550,6 +550,10 @@ The process typically involves data normalization, dispersion estimation, and hy
 
 In summary, differential expression analysis is a powerful tool for identifying genes that are differentially expressed between conditions, providing valuable insights into the underlying biology. However, it's important to use appropriate statistical methods and tools that account for the unique characteristics of RNA-seq data.
 
+## DESeq2 
 
+One of the most frquently used tools for RNA-seq differential analysis is DESeq2. It uses a generalized linear model (GLM) framework with a negative binomial distribution to model RNA-seq count data, accounting for both the mean-variance relationship and overdispersion.<br>
+The GLM includes a design matrix to specify the experimental design, and an empirical Bayes shrinkage estimator is used to improve the stability and accuracy of the dispersion estimates. This modeling approach allows for accurate and reliable identification of differentially expressed genes in RNA-seq data.
 
+### Exercise 3.1 - Differential expression on a single dataset
 
