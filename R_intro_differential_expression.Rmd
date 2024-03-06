@@ -6,7 +6,7 @@ output:
     highlight: tango
     number_sections: true
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     toc_float: true
 
 ---
@@ -36,8 +36,7 @@ figcaption {
 }
 </style>
 
-<!-- TO DO: GIVE MORE EXPLANATIONS ABOUT WORKING DIRECTORY -->
-<!-- TO DO: RENAME EXERCISES BY A, B, C, ... -->
+
 
 <!-- ###################################################################### -->
 <!-- ###################################################################### -->
@@ -152,7 +151,7 @@ library(stats) # standard R pkg for statistics, we'll use its PCA implementation
 
 <!-- ###################################################################### -->
 <!-- ###################################################################### -->
-# Import and data objects
+# Import and Data Objects
 <!-- ###################################################################### -->
 <!-- ###################################################################### -->
 
@@ -363,7 +362,7 @@ The process is repeated incrementally, but every following PC must be orthogonal
 </figure>
 
 
-<br>The thread I found these images is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I recommend to check out the thread, it has a number of answers, ranging from very mathematical to much more intuitive explanations (as hopefully given above :D)
+<br>The thread I found these images in, is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I recommend to check out the thread, it has a number of answers, ranging from very mathematical to much more intuitive explanations (as hopefully given above :D)
 <br> Link: https://stats.stackexchange.com/questions/2691/making-sense-of-principal-component-analysis-eigenvectors-eigenvalues
 
 
@@ -526,17 +525,17 @@ plt
 ```
 Additionally we can compute the percentage of variance that each of the PCs explains as follows:
 ```{r}
+#hint: perhaps you already encountered these numbers when inspecting the pca_obj with summary?
 percentage <- round(df_pca$sdev^2 / sum(df_pca$sdev^2) * 100, 2)
 percentage
 
-#hint: perhaps you already encountered these numbers when inspecting the pca_obj with summary?
 ```
 So the batch effect we observed on the PCA plot quite drastically is actually generating **42%** of the Variance in out data!
 
 ## Heatmaps and clustering
 
 <!-- perhaps later with the differential genes? -->
-# Differential expression
+# Differential Expression Analysis
 
 ## Foreword
 
@@ -556,4 +555,25 @@ One of the most frquently used tools for RNA-seq differential analysis is DESeq2
 The GLM includes a design matrix to specify the experimental design, and an empirical Bayes shrinkage estimator is used to improve the stability and accuracy of the dispersion estimates. This modeling approach allows for accurate and reliable identification of differentially expressed genes in RNA-seq data.
 
 ### Exercise 3.1 - Differential expression on a single dataset
+Lets start with the basic analysis of one of our datasets! 
+We'll see how to handle batch effects in the next chapter and then use both datasets. We'll settle for GSE68799, as the difference between Normal and Tumor samplees was much clearer in the PCA, making it likely the "easier" dataset.
+```{r, echo=F}
+# solution
+
+# Exercise 3.1.0: get subset of dataset with the select() function and the metadata table
+input_cts <- counts[meta.data %>% filter(dataset=="GSE68799") %>% rownames()]
+```
+
+```{r, echo=F}
+# Exercise 3.1.1: Create a DESeqDataSet object
+dds <- DESeqDataSetFromMatrix(
+  countData = input_cts,
+  colData = meta.data,
+  design = ~ class
+)
+
+
+
+```
+
 
