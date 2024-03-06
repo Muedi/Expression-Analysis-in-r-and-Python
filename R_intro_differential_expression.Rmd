@@ -8,10 +8,31 @@ output:
     toc: true
     toc_depth: 2
     toc_float: true
+
 ---
 <style>
 #header .btn-group {
     display: none;
+}
+
+
+/* Add a custom CSS counter for figures */
+body {
+  counter-reset: figure;
+}
+figure {
+  counter-increment: figure;
+}
+figcaption:before {
+  content: "Figure " counter(figure) " ";
+  font-weight: bold;
+}
+
+/* Modify the style of text in figure captions */
+figcaption {
+  font-style: italic;
+  color: #333;
+  font-size: 0.9em;
 }
 </style>
 
@@ -77,18 +98,23 @@ This tutorial uses the backbone of Dr. Jean-Fred Fontaine's R data analysis tuto
 While microarrays are still in use and can be especially useful when interested in a specific set of genes (Custom Arrays), RNA-seq is the main sourch for expression data nowadays. Nevertheless, many techniques, use for RNA-seq count data, in this course are directly - or with minor changes - applicabkle to microarray data too. 
 
 The basic workflow for RNA-seq and computational analysis can be seen in the figures below: 
-
 <div style="display: flex;">
 <div style="flex: 80%;">
-![Rouch scheme of a wet-lab workflow for RNA-seq. RNA is isolated from the source, fragmented and subsequently converted with the help of reverse transcriptse to CDNA. From here standard massively parallel sequencing techniques can be used: Adapters are added to the DNA strands, which are used internally in the sequencer and can differ dependeing on the sequencing chemistry used. The resszult, will be provided in form of a FASTQ file, that contains millions of short sequences, termed "fragments "or "reads". \nThe color code, shows to which steps the illustration on the right roughly belong. Note that RNA-extraction and selection are critical points in the process, that can alter the results significantly, by changeing the input amounts and kind of RNA. <br> Adapted from: https://microbenotes.com/rna-sequencing-principle-steps-types-uses/ by Johannes Wolter](images/rna-seq-lab.jpg)
-</div> 
+<figure>
+  <img src="images/rna-seq-lab.jpg" alt="Rouch scheme of a wet-lab workflow for RNA-seq.">
+  <figcaption>Rouch scheme of a wet-lab workflow for RNA-seq. RNA is isolated from the source, fragmented and subsequently converted with the help of reverse transcriptase to cDNA. From here standard massively parallel sequencing techniques can be used: Adapters are added to the DNA strands, which are used internally in the sequencer and can differ depending on the sequencing chemistry used. The result will be provided in the form of a FASTQ file, that contains millions of short sequences, termed "fragments" or "reads". The color code shows to which steps the illustration on the right roughly belongs. Note that RNA extraction and selection are critical points in the process, that can alter the results significantly, by changing the input amounts and kind of RNA. Adapted from: <https://microbenotes.com/rna-sequencing-principle-steps-types-uses/> by Johannes Wolter</figcaption>
+</figure>
+</div>
 
 <div style="flex: 20%;">
 ![](images/rna-seq-lab-2.jpg)
 </div>
 </div>
 
-![Quality control ensures, that the wet-lab experiments, worked as intended and can give the analyist insights on how to handle the data. If there are problematic samples, they can be removed to stop them from biasing the results, certain types of artifacts, namnely batch effects, can also sometimes be detected during this phase and taken into account downstream. The subsequent mapping step holds much information about the quality of the data and should be considered if compute is not too demanding. <br>Trimming can be used to increase the coverage of reads on the reference genome and to filter out faulty reads, increasing the overall quality and useability of a sample. For RNA-seq it is often not as important as for other functional genmoics assays, though. <br>The mapping step is one of the most important in the pipeline. The reads saved in the FASTQ file are mapped, or aligned, to a reference genome. That means, an algorithm searches the whole genome for the best fit of the sequenc of the given read. This step is computationally demanding as millions of reads need to be aligned to a sequence of millions of nucleotides. The resulting BAM files can be annotated and the reads that fall on the locus of a gene be counted, resulting in a gene count matrix. We will use such a matrix, for which the preprocessing was already done in this course. <br>Source: https://biocorecrg.github.io/RNAseq_course_2019/alignment.html ](images/expression-analysis-pipelines.png)
+<figure>
+  <img src="images/expression-analysis-pipelines.png" alt="Caption for my figure">
+  <figcaption>Quality control ensures, that the wet-lab experiments, worked as intended and can give the analyist insights on how to handle the data. If there are problematic samples, they can be removed to stop them from biasing the results, certain types of artifacts, namnely batch effects, can also sometimes be detected during this phase and taken into account downstream. The subsequent mapping step holds much information about the quality of the data and should be considered if compute is not too demanding. <br>Trimming can be used to increase the coverage of reads on the reference genome and to filter out faulty reads, increasing the overall quality and useability of a sample. For RNA-seq it is often not as important as for other functional genmoics assays, though. <br>The mapping step is one of the most important in the pipeline. The reads saved in the FASTQ file are mapped, or aligned, to a reference genome. That means, an algorithm searches the whole genome for the best fit of the sequenc of the given read. This step is computationally demanding as millions of reads need to be aligned to a sequence of millions of nucleotides. The resulting BAM files can be annotated and the reads that fall on the locus of a gene be counted, resulting in a gene count matrix. We will use such a matrix, for which the preprocessing was already done in this course. <br>Source: https://biocorecrg.github.io/RNAseq_course_2019/alignment.html</figcaption>
+</figure>
 
 <br>
 
@@ -137,7 +163,11 @@ library(stats) # standard R pkg for statistics, we'll use its PCA implementation
 Top run any analysis, we first need our data of course. 
 We'll get our data from an already prepossessed and curated dataset source called BARRA:CuRDa - weird name I know - but we'll not take the complete set but only choose some sets. The database, with it's downloadable datasets and the paper can be found here: https://sbcb.inf.ufrgs.br/barracurda.
 The authors of the database and paper, have used the following workflow, you'll notice some overlaps with what was discussed in the **Introduction**. <br>
-![](images/barra-curda-workflow.png)
+<figure>
+  <img src="images/barra-curda-workflow.png" alt="Caption for my figure">
+  <figcaption>Preprocessing workflow for our datasets.</figcaption>
+</figure>
+
 <br>
 The dataset was picked and curated to be optimal for machine learning and benchmarked for mutliple algortihms. We'll explore some of that in the second week of the course and compare our differential genes with what the ML algos deem as important in our data. First, we'll focus on exploratory and differential analysis though. 
 <br> 
@@ -322,12 +352,18 @@ This will give us an overview of how similar the samples are to each other and i
 ### What's a PCA though?
 A Principal Component Analysis, short PCA, is a (linear) *dimension reduction* technique and therefore can be counted to classical unsupervised machine learning. 
 It's been around since 1901 and basically computes linear combinations that represent the variance in the data best. To do that it starts, with the longest axis in the data, by minmizing the distance of each point in the data to the first linear combination it computes: The first principal component (PC). This GIF gives a good intuition whats happening under the hood: <br>
-![](images/first-pc.gif)
+<figure>
+  <img src="images/first-pc.gif" alt="Caption for my figure">
+  <figcaption>Minimization of distances to a line in 2D space.</figcaption>
+</figure>
 The process is repeated incrementally, but every following PC must be orthogonal to all its predecessors, to ensure the PCs do not overlap in information about the underlying variance of the data. The image below shows three PCs fitted to an ellipsoid. 
+<figure>
+  <img src="images/3D-pcs.png" alt="Caption for my figure">
+  <figcaption>Three PCs fitted to an elipsoid in 3D space, notice how the first PC is in parallel to the longest axis of the ellipsoid and the others are orthogonal to it and each other.</figcaption>
+</figure>
 
-![](images/3D-pcs.png)
 
-The thread I found these images is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I recommend to check out the thread, it has a number of answers, ranging from very mathematical to much more intuitive explanations (as hopefully given above :D)
+<br>The thread I found these images is from crossvalidated, a sub-site of stackexchange, where one can often find answers to questions regarding statistics and machine learning. I recommend to check out the thread, it has a number of answers, ranging from very mathematical to much more intuitive explanations (as hopefully given above :D)
 <br> Link: https://stats.stackexchange.com/questions/2691/making-sense-of-principal-component-analysis-eigenvectors-eigenvalues
 
 
@@ -406,10 +442,25 @@ plt <- combined_data %>%
 plt
 ```
 
-Now use what you saw above with your dataframe containing the PCs and metadata.
-Save the plot with the ggsave function. 
+Now use what you saw above with your dataframe containing the PCs and metadata. Use the **geom_point()** function to plot a scatterplot!
+Save the plot with the **ggsave()** function in the *out.dir*. 
 ```{r include=T}
+# Exercise 2.2
+plt <- df_plot %>% 
+  ...
 
+plt
+
+
+# suggested filename: "PCA_head-and-neck.png"
+ggsave(...)
+
+```
+
+This is how you plot should look like: 
+
+```{r, echo=F}
+# solution
 plt <- df_plot %>% 
   ggplot(aes(x=PC1, y=PC2, color=class, shape=dataset)) +
       geom_point() 
@@ -426,9 +477,34 @@ Artifacts is a word for underlying factors that effect the data we are working w
 </div>
 
 ### Excersise 3 - Screeplots and percentage of Variance explained.
-Principal components can tell us a lot about the data, the more you need to adequately descripe its variance, the more diverse it is. It is intersting for us to see how much variance is actually covered by the PCs. 
+Principal components can tell us a lot about the data, the more you need to adequately descripe its variance, the more diverse it is. It is intersting for us to see how much variance is actually covered by the PCs. First we'll get the standard deviations, which are stored in our PCA object inspect the object to see in which part of it they could be stored. Don't forget that we'll need to square the standard deviation to get the variance!
 
 ```{r}
+# first we'll get the standard deviations, which are stored in our PCA object
+# inspect the object to see in which part of it they could be stored.
+# don't forget that we'll need to square the standard deviation to get the variance!
+# Then we Create a data frame for the scree plot
+scree_data <- data.frame(
+  PC = paste("PC", 1:length(pca_obj$...)),
+  Variance =  pca_obj$... ...
+)
+# we'll just take the first 20 
+scree_data <- scree_data[...,]
+
+# now we can create a scree plot which basically plots the PCs in their order
+# and the respective variance explained by them. 
+plt <- ggplot(scree_data, aes(x = reorder(PC, Variance, decreasing=T), y = Variance)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Scree Plot",
+       x = "Principal Component",
+       y = "Variance Explained") +
+  theme_bw()
+plt
+
+```
+
+```{r, echo=F}
+# soolution:
 # first we'll get the standard deviations, which are stored in our PCA object
 # Create a data frame for the scree plot
 scree_data <- data.frame(
@@ -452,10 +528,28 @@ Additionally we can compute the percentage of variance that each of the PCs expl
 ```{r}
 percentage <- round(df_pca$sdev^2 / sum(df_pca$sdev^2) * 100, 2)
 percentage
+
+#hint: perhaps you already encountered these numbers when inspecting the pca_obj with summary?
 ```
 So the batch effect we observed on the PCA plot quite drastically is actually generating **42%** of the Variance in out data!
 
 ## Heatmaps and clustering
 
-## Differential expression
+<!-- perhaps later with the differential genes? -->
+# Differential expression
+
+## Foreword
+
+Differential expression analysis is a key step in interpreting RNA-seq data, aiming to identify genes whose expression levels differ significantly between conditions. This process can reveal important insights into biological processes and diseases.
+
+Classical statistical methods, such as t-tests, may not work well for RNA-seq data due to its unique characteristics. RNA-seq data is typically overdispersed, meaning the variance exceeds the mean, violating the assumptions of many classical statistical methods. Additionally, RNA-seq data is count-based and often has a large number of zero counts, which can lead to false positives or negatives when using classical methods.
+
+To address these challenges, specialized statistical methods and tools have been developed for differential expression analysis of RNA-seq data, such as DESeq2, edgeR, and limma-voom. These methods account for the overdispersion and count-based nature of RNA-seq data, providing more accurate and reliable results.
+
+The process typically involves data normalization, dispersion estimation, and hypothesis testing. The result is a list of genes ranked by significance, along with statistics such as fold change and false discovery rate (FDR).
+
+In summary, differential expression analysis is a powerful tool for identifying genes that are differentially expressed between conditions, providing valuable insights into the underlying biology. However, it's important to use appropriate statistical methods and tools that account for the unique characteristics of RNA-seq data.
+
+
+
 
