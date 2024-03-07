@@ -75,12 +75,10 @@ BiocManager::install(c(
   "limma", 
   "EnhancedVolcano",
   "ComplexHeatmap",
-  "fgsea"
+  "fgsea",
+  "sva"
 ))
 ```
-
-
-<div>
 
 <!-- ###################################################################### -->
 ## Introduction
@@ -142,9 +140,9 @@ To use the packages mentioned above, we'll install them first. You should have t
 If it worked out, we can load the packages - or *libraries* - by calling the **library()** functioon: 
 ```{r, message=FALSE, warning=FALSE, echo=TRUE, results='hide'}
 library(tidyverse)
-library(DESeq2) # differential anlysis
+library(limma) # differential anlysis
 library(stats) # standard R pkg for statistics, we'll use its PCA implementation
-
+library(sva)
 ```
 
 <!-- ###################################################################### -->
@@ -242,6 +240,7 @@ test
 Well that worked out well! Note how simple the syntax for data import is: you choose the name of a variable to store your table, use the **<-** operator (written with 2 characters: **<** and **-**), call the appropriate **readr** function and specify the location of your file.
 <br>So now we'll get all files in the input folder and read in each of them.
 <br> additionally, we'll save the names of the respective files, so that we can keep that info for later. 
+
 ```{r, echo=TRUE, results='hide'}
 # get the file names, note that this will only return the names of the file not the whole paths
 # (whioch we coould do though! Check out the functions vignette, by pressing F1, when the curser is on its text.)
@@ -282,10 +281,10 @@ dim(combined_data)
 head(combined_data)
 
 ```
-What we have at our hands was formated to be used with ML tools: <br>
+What we have at our hands was formatted to be used with ML tools: <br>
 It shows the variables (features) in the columns and the Observations (samples) in the rows (<span style="color: #336699; font-weight: bold;">samples x features</span>). 
 This data format is particularly useful for plotting and most machine learning software, will also expect this format. 
-However, in most other applications in R, like statistical functions and also the bioinformtic packages we'll be using, the oposite is expected: 
+However, in most other applications in R, like statistical functions and also the bioinformatic packages we'll be using, the opposite is expected: 
 <span style="color: #336699; font-weight: bold;">features x samples</span>
 
 
@@ -295,12 +294,12 @@ a. Assign a new variable called *meta.data* that hold the general information ab
 b. Assign a new variable called *counts* that hold the numerical information about the samples. It should be Genenames x sample names, the genenames should be assigned as row names. 
 
 Use the **select()** function for both tasks. 
-<br>Tipp: you can *deselect* a column, by using **-** infront of the column name.
+<br>Tipp: you can *eselect* a column, by using **-** infront of the column name.
 <br>Tipp: Use **as.data.frame()** and **column_to_rownames()** to accomplish this. 
 <br>Feel free to use the pipeoperator **%>%** to select the data. 
 
 ```{r,echo=TRUE, results='hide'}
-# build metadata
+# Exercise 1.3 a) build metadata
 meta.data <- combined_data %>% 
   select(ID, class, dataset) %>% 
   column_to_rownames("ID") %>% 
@@ -308,7 +307,7 @@ meta.data <- combined_data %>%
   
 meta.data
 
-# make count matrix
+# Exercise 1.3 b) make count matrix
 counts <- combined_data %>%
   select(-class, -dataset) %>% 
   column_to_rownames("ID") %>% 
@@ -348,7 +347,7 @@ This will give us an overview of how similar the samples are to each other and i
 
 ### What's a PCA though?
 A Principal Component Analysis, short PCA, is a (linear) *dimension reduction* technique and therefore can be counted to classical unsupervised machine learning. 
-It's been around since 1901 and basically computes linear combinations that represent the variance in the data best. To do that it starts, with the longest axis in the data, by minmizing the distance of each point in the data to the first linear combination it computes: The first principal component (PC). This GIF gives a good intuition whats happening under the hood: <br>
+It's been around since 1901 and basically computes linear combinations that represent the variance in the data best. To do that, it starts with the longest axis in the data, by minimizing the distance of each point in the data to the first linear combination it computes: The first principal component (PC). This GIF gives a good intuition whats happening under the hood: <br>
 <figure>
   <img src="images/first-pc.gif" alt="Caption for my figure">
   <figcaption>Minimization of distances to a line in 2D space.</figcaption>
@@ -577,8 +576,9 @@ input_cts <- counts[,meta.data %>% filter(dataset=="GSE68799") %>% rownames()]
 ```
 
 
-Now on to the implementation of a standard limma workflow. 
-Feel free to use the internet, there are a plethora of tutorials online. Remember, that you DO NOT need to use voom as we already have normalized data.
+Now on to the implementation of a standard limma workflow.
+Feel free to use the internet, there are a plethora of tutorials online. There is also a lot of information in the vignettes, try ```?model.matrix``` and ```limmaUsersGuide()``` for example.
+<br>Remember, that you DO NOT need to use voom as we already have normalized data.
 ```{r}
 # Load the limma package
 library(limma)
@@ -591,6 +591,9 @@ new.meta <- meta.data %>%
 
 # Exercise 3.1.1: Create a limma object. You'll need a model.matrix,
 # to function as design, you can use the information in the mew.mate dataframe
+#check this out first: 
+?model.matrix
+# now you can design your formula:
 design <- model.matrix(...)
 
 # Exercise 3.1.2 Create a fit object and subsequently call th ebayes function to estimate gene-wise variance
@@ -620,7 +623,7 @@ new.meta <- meta.data %>%
 
 # Exercise 3.1.1: Create a limma object. You'll need a model.matrix,
 # to function as design, you can use the information in the mew.mate dataframe
-design <- model.matrix(...)
+design <- model.matrix(~ class, data = new.meta)
 
 # Exercise 3.1.2 Create a fit object and subsequently call th ebayes function to estimate gene-wise variance
 # fits linear model
@@ -639,11 +642,70 @@ res_sig <- subset(res, adj.P.Val < 0.05)
 
 ```
 
-Now we do have a number of differentially expressed genes, which we can plot, subset and further categorize. 
+Now we do have a number of differentially expressed genes (DEGs), which we can plot, subset and further categorize. 
 
-### Exercise 3.2 P-values and Co
+
+<div style="border: 1px solid black; padding: 10px; background-color: #f9f9f9;">
+<p style="text-align: center; font-weight: bold;">P-Values</p>
+The p-value is a statistical measure that helps determine the significance of a hypothesis test. In the context of a moderated t-test, such as the one used in the limma package in R, the p-value represents the probability of observing the test statistic (or a more extreme value) assuming the null hypothesis is true. The null hypothesis typically states that there is no difference between the groups being compared.
+
+The calculation of the p-value in a moderated t-test involves first computing the moderated t-statistic, which takes into account both the observed differences between the groups and the associated uncertainties. This moderated t-statistic is then compared to a t-distribution with appropriate degrees of freedom to obtain the p-value. The degrees of freedom are calculated based on the number of samples and the estimates of gene-wise variances. The p-value obtained from this process indicates the level of evidence against the null hypothesis, with smaller p-values suggesting stronger evidence in favor of the alternative hypothesis (i.e., there is a significant difference between the groups).
+</div>
+
+
+### Exercise 3.2 - P-values and Co
 Why do we use the adjusted P-value? 
-<br>Which adjustment method uses limma?
+<br>Which adjustment method is used by limma?
 
-ToDO: Box about P-values
+## Strategies to handle Batch Effects
+
+As previously mentioned, batch effects can have huge impacts on downstream analysis.
+<br>Modern solutions for differential expression analysis that use linear models to model gene expression, can be fed with additional information about the batches, if these are known. (As in our case). 
+However its important to note, that you can also have artifacts that are not directly correlated with the known batch! For this there are packages such as *SVA* - Surrogate variable analysis - that provide algorithms for detecting and correcting batch effects. 
+
+We'll first use the information we have and give it to limmas model and then compare our DEGs, then we'll run SVA to see what it detects and how well it correlated with our batches. 
+
+### Exercise 4.1 - Design matrix with confounding factors. 
+
+To run limma with batch information, you can use your code from above almost exactly as before. However, this time we'll use the full dataset. You'll just have to add the *dataset* variable to your design formula. 
+Tasks: 
+a. Make one design formula with and one without the additional dataset info.
+b. Run the limma analysis on the whole dataset once with each design model and save it to different result-variables. 
+c. compare the outcomes: Do we have more or less DEGs?
+
+```{r, echo=F}
+# solution
+
+# Exercise 4.1 :a)
+design <- model.matrix(~ class, data = meta.data)
+design_batch <- model.matrix(~ class + dataset, data = meta.data)
+
+# Exercise 4.1 b)
+fit <- lmFit(counts, design)
+fit <- eBayes(fit)
+res <- topTable(fit, number = Inf,  coef = 2)
+res_sig <- res %>% filter(adj.P.Val < 0.05)
+# with batch
+fit <- lmFit(input_cts, design)
+fit <- eBayes(fit)
+res_batch <- topTable(fit, number = Inf,  coef = 2)
+res_batch_sig <- res %>% filter(adj.P.Val < 0.05)
+```
+
+### Exercise 4.2 - Run SVA and search for correlations with our Batch.
+For this we'll need to consider a few things: <br>
+a. To be able to compare our datasets/batches, we'll need to have a vector containing numbers that represents the batches. You can use  **%>% mutate()** in combination with the **ifelse()** function to generate a new column in the meta.data, called *dataset_num*.
+b. SVA will take in the count data and a design matrix, so the inputs are the same as above. sva suggestst to add another design matrix mod0 for the best results, but to keep it as simple as possible we'll stay at just x=counts and mod=design. 
+c. Now we have both SVs and a numerical batch representation and can use **cor()** to compute paiwise correlations of the SVs with the batch.
+```{r}
+# a) make a numerical version of meta.data
+meta.data <- meta.data %>% 
+  mutate(dataset_num = ifelse(dataset=="GSE68799", 0, 1))
+
+# b) make a sva obj and compute surrogate variables. 
+svobj <- sva(counts, design) 
+
+# c) pairwise cors with SVs and meta.data
+cor(meta.data$dataset_num, svobj$sv)
+```
 
