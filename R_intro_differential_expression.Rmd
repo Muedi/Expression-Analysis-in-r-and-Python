@@ -142,7 +142,7 @@ If it worked out, we can load the packages - or *libraries* - by calling the **l
 library(tidyverse)
 library(limma) # differential anlysis
 library(stats) # standard R pkg for statistics, we'll use its PCA implementation
-library(sva)
+library(sva) # batch effect stuff
 ```
 
 <!-- ###################################################################### -->
@@ -368,12 +368,25 @@ A scatterplot is the most simple plot you can come up with, it plots two numeric
 
 
 ### Exercise 2.1 - computing Principal Components and use them for Exploratory Analysis 
-a. Load the stats package and use the **prcomp()** function to compute the principal components of our expression data and save it in a variable.
+a. Use the **prcomp()** function to compute the principal components of our expression data and save it in a variable.
 b. Assign the PCs to a new variable by calling the PCA-object you just saved, now add the metadata to it with the **left_join()** function.
 
 Tipp: as we mentioned PCA is a ML technique and most of the time the respective functions will expect the data to be <span style="color: #336699; font-weight: bold;">features x samples</span>, use **t()** to easily transpose the counts object.<br>
 Tipp: there is also **rownames_to_column()**
 ```{r message=FALSE, warning=FALSE, include=T}
+# a) compute PCs
+pca_obj <- prcomp(...) 
+df_plot <- pca_obj$x %>% as_tibble(rownames="ID")
+
+
+# b) add metadata
+df_plot <- meta.data %>% 
+  ...
+
+```
+
+
+```{r message=FALSE, warning=FALSE, include=F}
 # compute PCs
 pca_obj <- prcomp(t(counts)) 
 df_plot <- pca_obj$x %>% as_tibble(rownames="ID")
@@ -385,6 +398,8 @@ df_plot <- meta.data %>%
   left_join(df_plot, by = "ID")
 
 ```
+
+
 
 ### Exercise 2.2 - Plotting the information together with metadata.
 
@@ -500,7 +515,7 @@ plt
 ```
 
 ```{r, echo=F}
-# soolution:
+# solution:
 # first we'll get the standard deviations, which are stored in our PCA object
 # Create a data frame for the scree plot
 scree_data <- data.frame(
@@ -697,7 +712,7 @@ For this we'll need to consider a few things: <br>
 a. To be able to compare our datasets/batches, we'll need to have a vector containing numbers that represents the batches. You can use  **%>% mutate()** in combination with the **ifelse()** function to generate a new column in the meta.data, called *dataset_num*.
 b. SVA will take in the count data and a design matrix, so the inputs are the same as above. sva suggestst to add another design matrix mod0 for the best results, but to keep it as simple as possible we'll stay at just x=counts and mod=design. 
 c. Now we have both SVs and a numerical batch representation and can use **cor()** to compute paiwise correlations of the SVs with the batch.
-```{r}
+```{r, echo=FALSE}
 # a) make a numerical version of meta.data
 meta.data <- meta.data %>% 
   mutate(dataset_num = ifelse(dataset=="GSE68799", 0, 1))
